@@ -2,27 +2,44 @@ install.packages("dplyr")
 install.packages("ggplot2")
 install.packages("ggmap")
 install.packages("mapproj")
+install.packages("rgdal")
+
 
 library(dplyr)
 library(ggplot2)
 library(ggmap)
 library(mapproj)
+library(rgdal)
 
-#get basemap
+#get basemap from GOOGLE and plot parks
 
-map <- get_map(location = 'Sheffield', zoom = 13) 
-shape <- readOGR(dsn = ".", layer = "~/workspace/map")
-
-PCS <- readOGR(dsn=".",layer="PCS")
+# get map
+map <- get_map(location = 'Sheffield', zoom = 12) 
+#load park data & plot to check
+PCS <- readOGR(dsn="parks/",layer="PCS")
 plot(PCS)
 
+# name projection codes
+latlong = "+init=epsg:4326"
+ukgrid = "+init=epsg:27700"
+google = "+init=epsg:3857"
+
+# assign projection of park data (sourced from: 
+# https://data.gov.uk/dataset/sheffield-city-council-parks-and-countryside-service-sites)
+proj4string(PCS) <- CRS(ukgrid)
+# create new files with different projections
+PCSg <- spTransform(PCS, CRS(google))
+PCSl <- spTransform(PCS, CRS(latlong))
+
+# extract coordinate data into a data.frame
+df <- setNames(data.frame(PCSl@coords), c("x", "y"))
+
+# PLOT!
+ggmap(map) + geom_point(data=df, aes(x=x, y=y),size=1)
 
 
-ggmap(map) + geom_point(data=df, aes(x=x, y=y),size=5)
 
 
-
-df <- data.frame(x= PCS$X, y=PCS$Y)
 
 
 
@@ -117,15 +134,9 @@ ogrInfo("postcodes-rdgal")
 
 ############################################
 
+
 #parks and coutryside data
-library(rgdal)
 shape <- readOGR(dsn = ".", layer = "~/workspace/map")
-
-PCS <- readOGR(dsn=".",layer="PCS")
-plot(PCS)
-
-
-
 
 
 
