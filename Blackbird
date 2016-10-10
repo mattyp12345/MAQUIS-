@@ -1,0 +1,67 @@
+#Biodiversity code
+
+install.packages("ggmap")
+library("ggmap")
+install.packages("ggplot2")
+library("ggplot2")
+install.packages("dplyr")
+library("dplyr")
+
+bins <- 10
+x <- seq(from=min(birddata$longitude), to=max(birddata$longitude), length.out=bins)
+y <- seq(from=min(birddata$latitude), to=max(birddata$latitude), length.out=bins)
+binwidth.x <- (max(birddata$longitude) - min(birddata$longitude) ) / bins
+binwidth.y <- (max(birddata$latitude) - min(birddata$latitude) ) / bins
+binwidth <- c(binwidth.x, binwidth.y)
+grid <- expand.grid(x=x,y=y)
+head(grid)
+
+bin.centre <- function(coord,d){ binwidth * floor(coord/binwidth[d]) }
+bin.lower  <- function(coord,d){ coord - binwidth[d]/2   }
+bin.upper  <- function(coord,d){ coord + binwidth[d]/2   }
+bin.lower(x,1)
+
+
+density <- mapply(function(x,y){
+  with(birddata,
+       list(x=x,y=y,z=sum(
+         longitude > bin.lower(x,1) &
+           longitude <= bin.upper(x,1) & 
+           latitude > bin.lower(y,2) & 
+           latitude  <= bin.upper(y,2))
+       ))}, x=grid$x,y=grid$y) %>% t
+
+density <- as.data.frame(cbind(grid, z=unlist(density[,3])))
+
+# density <- within(density, {
+#     lx = bin.lower(x)
+#     ly = bin.lower(y)
+#     ux = bin.upper(x)
+#     uy = bin.upper(y)
+#     }
+#     )
+head(density)
+
+ggplot(density, aes(fill=z)) + 
+  geom_rect(aes(xmin=bin.lower(x,1),ymin=bin.lower(y,2),xmax=bin.upper(x,1),ymax=bin.upper(y,2))) +
+  scale_fill_distiller(palette = "Spectral")
+
+location <- c(median(x),median(y))
+map <- get_map(location, zoom=12, source="google")
+
+ggmap(map) + 
+  geom_rect(data=density,
+            inherit.aes=F,
+            aes(xmin=bin.lower(x,1),ymin=bin.lower(y,2),xmax=bin.upper(x,1),ymax=bin.upper(y,2),fill=z,alpha=z)) +
+  scale_fill_distiller(palette = "Spectral")
+
+ggplot(density, aes(z))+ geom_histogram(fill='red') + scale_x_log10()
+
+
+ggmap(map) + 
+  geom_rect(data=density,
+            inherit.aes=F,
+            aes(xmin=bin.lower(x,1),ymin=bin.lower(y,2),xmax=bin.upper(x,1),ymax=bin.upper(y,2),fill=z),alpha=0.5)  +
+  scale_fill_distiller(palette = "Spectral",trans = "log")
+
+
